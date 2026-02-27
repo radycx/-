@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>资产管理系统</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--primary:#1e40af;--primary-700:#1d4ed8;--border:#e5e7eb;--danger:#b91c1c;--success:#065f46}
+    html,body{height:100%}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;color:var(--text);background:var(--bg)}
+    .container{max-width:1080px;margin:24px auto;padding:0 20px}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .title{font-size:28px;font-weight:600;color:var(--primary)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+    .section{padding:20px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .field{display:flex;flex-direction:column}
+    .label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .input,.select{height:38px;border:1px solid var(--border);border-radius:8px;padding:0 12px;font-size:14px;background:#fff;outline:none}
+    .input:focus,.select:focus{border-color:var(--primary-700);box-shadow:0 0 0 3px rgba(29,78,216,.12)}
+    .actions{display:flex;gap:10px;margin-top:10px}
+    .btn{height:38px;padding:0 16px;border:1px solid transparent;border-radius:8px;background:var(--primary);color:#fff;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+    .btn:hover{background:var(--primary-700)}
+    .btn.secondary{background:#fff;color:var(--text);border-color:var(--border)}
+    .btn.secondary:hover{border-color:var(--primary-700);color:var(--primary-700)}
+    .btn.danger{background:var(--danger);color:#fff}
+    .btn.danger:hover{filter:brightness(1.05)}
+    .btn.ghost{background:#fff;color:var(--text);border-color:transparent}
+    .subheader{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border)}
+    .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end}
+    .list{padding:0}
+    .table-wrap{border-top:1px solid var(--border)}
+    .table-container{max-height:440px;overflow-y:auto}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid var(--border);text-align:left;padding:10px;font-size:13px;color:var(--muted);z-index:1}
+    tbody td{border-bottom:1px solid var(--border);padding:10px;font-size:14px}
+    tbody tr{height:44px}
+    tbody tr:hover{background:#f9fafb}
+    .ops{display:flex;gap:8px}
+    .stat{display:flex;gap:20px;font-size:14px;color:var(--muted)}
+    .stat strong{color:var(--text)}
+    .footer{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border)}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef2ff;color:var(--primary);font-size:12px;border:1px solid #e0e7ff}
+    .modal{position:fixed;inset:0;background:rgba(17,24,39,.4);display:none;align-items:center;justify-content:center;z-index:9999}
+    .modal.show{display:flex}
+    .modal-card{width:920px;max-width:calc(100vw - 80px);background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
+    .modal-title{font-size:18px;font-weight:600}
+    .modal-body{padding:20px;max-height:70vh;overflow:auto}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--border)}
+    .empty{padding:20px;color:var(--muted);text-align:center}
+    .loading{position:fixed;inset:0;background:rgba(255,255,255,.6);display:none;align-items:center;justify-content:center;z-index:10000}
+    .loading.show{display:flex}
+    .loading .box{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,.12);font-size:14px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">资产管理系统</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn secondary" id="bind_file_btn">绑定数据文件</button>
+        <button class="btn secondary" id="export_xls_btn">导出Excel</button>
+        <div class="badge" id="file_status">未绑定</div>
+      </div>
+    </div>
+
+    <div class="card section" id="create-section">
+      <div class="label" style="margin-bottom:10px">新增资产登记</div>
+      <form id="createForm">
+        <div class="grid">
+          <div class="field">
+            <label class="label">资产名称</label>
+            <input class="input" id="f_name" required>
+          </div>
+          <div class="field">
+            <label class="label">资产类别</label>
+            <select class="select" id="f_category" required>
+              <option value="">请选择</option>
+              <option>电子设备</option>
+              <option>办公家具</option>
+              <option>办公用品</option>
+              <option>车辆</option>
+              <option>软件</option>
+              <option>其它</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">厂家</label>
+            <input class="input" id="f_vendor">
+          </div>
+          <div class="field">
+            <label class="label">型号</label>
+            <input class="input" id="f_model">
+          </div>
+          <div class="field">
+            <label class="label">采购日期</label>
+            <input class="input" type="date" id="f_date" required>
+          </div>
+          <div class="field">
+            <label class="label">采购金额（元）</label>
+            <input class="input" type="number" step="0.01" min="0" id="f_amount" required>
+          </div>
+          <div class="field">
+            <label class="label">使用地点</label>
+            <input class="input" id="f_location" list="list_locations">
+          </div>
+          <div class="field">
+            <label class="label">使用人</label>
+            <input class="input" id="f_user" list="list_users">
+          </div>
+        </div>
+        <datalist id="list_locations"></datalist>
+        <datalist id="list_users"></datalist>
+        <div class="actions">
+          <button type="submit" class="btn">新增登记</button>
+          <button type="reset" class="btn secondary">重置</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card list" id="list-section">
+      <div class="subheader">
+        <div class="label">资产清单列表</div>
+        <div class="filters">
+          <div class="field">
+            <label class="label">按类别筛选</label>
+            <select class="select" id="filter_category">
+              <option value="">全部</option>
+              <option>电子设备</option>
+              <option>办公家具</option>
+              <option>办公用品</option>
+              <option>车辆</option>
+              <option>软件</option>
+              <option>其它</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">采购起始日期</label>
+            <input class="input" type="date" id="filter_start">
+          </div>
+          <div class="field">
+            <label class="label">采购截止日期</label>
+            <input class="input" type="date" id="filter_end">
+          </div>
+          <div class="actions">
+            <button type="button" class="btn secondary" id="filter_reset">清空筛选</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">序号</th>
+                <th style="width:140px">资产名称</th>
+                <th style="width:120px">类别</th>
+                <th style="width:140px">厂家</th>
+                <th style="width:120px">型号</th>
+                <th style="width:140px">采购日期</th>
+                <th style="width:120px">采购金额</th>
+                <th style="width:160px">使用地点</th>
+                <th style="width:120px">使用人</th>
+                <th style="width:100px">状态</th>
+                <th style="width:160px">创建时间</th>
+                <th style="width:160px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="list_body"></tbody>
+          </table>
+          <div class="empty" id="empty_hint" style="display:none">暂无记录</div>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="stat">
+          <div>资产总数：<strong id="stat_count">0</strong> 件</div>
+          <div>资产总额：<strong id="stat_amount">0.00</strong> 元</div>
+        </div>
+        <div class="label">根据筛选条件自动统计</div>
+      </div>
+    </div>
+  </div>
+  <div class="loading" id="loading"><div class="box">正在连接云端并加载数据…</div></div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">编辑资产</div>
+        <button class="btn ghost" id="editClose">关闭</button>
+      </div>
+      <div class="modal-body">
+        <form id="editForm">
+          <input type="hidden" id="e_id">
+          <div class="grid">
+            <div class="field">
+              <label class="label">资产名称</label>
+              <input class="input" id="e_name" required>
+            </div>
+            <div class="field">
+              <label class="label">资产类别</label>
+              <select class="select" id="e_category" required>
+                <option>电子设备</option>
+                <option>办公家具</option>
+                <option>办公用品</option>
+                <option>车辆</option>
+                <option>软件</option>
+                <option>其它</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">厂家</label>
+              <input class="input" id="e_vendor">
+            </div>
+            <div class="field">
+              <label class="label">型号</label>
+              <input class="input" id="e_model">
+            </div>
+            <div class="field">
+              <label class="label">采购日期</label>
+              <input class="input" type="date" id="e_date" required>
+            </div>
+            <div class="field">
+              <label class="label">采购金额（元）</label>
+              <input class="input" type="number" step="0.01" min="0" id="e_amount" required>
+            </div>
+            <div class="field">
+              <label class="label">使用地点</label>
+              <input class="input" id="e_location" list="list_locations">
+            </div>
+            <div class="field">
+              <label class="label">使用人</label>
+              <input class="input" id="e_user" list="list_users">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="editSave">保存</button>
+        <button class="btn secondary" id="editCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    let assets=[];
+    let csvName='zc-list.csv';
+    const defaultNames=['zc-list.csv'];
+    const els={
+      listBody:document.getElementById('list_body'),
+      emptyHint:document.getElementById('empty_hint'),
+      statCount:document.getElementById('stat_count'),
+      statAmount:document.getElementById('stat_amount'),
+      file:{bindBtn:document.getElementById('bind_file_btn'),exportBtn:document.getElementById('export_xls_btn'),status:document.getElementById('file_status')},
+      f:{name:document.getElementById('f_name'),category:document.getElementById('f_category'),vendor:document.getElementById('f_vendor'),model:document.getElementById('f_model'),date:document.getElementById('f_date'),amount:document.getElementById('f_amount'),location:document.getElementById('f_location'),user:document.getElementById('f_user')},
+      filters:{category:document.getElementById('filter_category'),start:document.getElementById('filter_start'),end:document.getElementById('filter_end'),reset:document.getElementById('filter_reset')},
+      modal:{wrap:document.getElementById('editModal'),close:document.getElementById('editClose'),save:document.getElementById('editSave'),cancel:document.getElementById('editCancel'),id:document.getElementById('e_id'),name:document.getElementById('e_name'),category:document.getElementById('e_category'),vendor:document.getElementById('e_vendor'),model:document.getElementById('e_model'),date:document.getElementById('e_date'),amount:document.getElementById('e_amount'),location:document.getElementById('e_location'),user:document.getElementById('e_user')}
+    };
+    if(els.file?.status){els.file.status.textContent='云端连接中…'}
+    const header=['id','name','category','vendor','model','date','amount','location','user'];
+    function esc(v){return '"'+String(v??'').replace(/"/g,'""')+'"'}
+    function toCSV(rows){return [header.join(','),...rows.map(r=>header.map(h=>esc(r[h])).join(','))].join('\n')}
+    function splitCSVLine(line){const re=/(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",]*))/g;const out=[];line.replace(re,(m,a,b)=>{out.push(a? a.replace(/""/g,'"'):b) });return out}
+    function fromCSV(text){const lines=text.trim().split(/\r?\n/);if(!lines.length)return [];const cols=lines[0].split(',');const idx=(k)=>cols.indexOf(k);const res=[];for(let i=1;i<lines.length;i++){if(!lines[i].trim())continue;const cells=splitCSVLine(lines[i]);const obj={};header.forEach(h=>{const j=idx(h);obj[h]=j>=0?cells[j]:''});res.push(obj)}return res}
+    function unique(field){return Array.from(new Set(assets.map(a=>String(a[field]||'').trim()).filter(Boolean))).sort()}
+    function refreshSuggestions(){const locEl=document.getElementById('list_locations');const userEl=document.getElementById('list_users');locEl.innerHTML='';userEl.innerHTML='';unique('location').forEach(v=>{const o=document.createElement('option');o.value=v;locEl.appendChild(o)});unique('user').forEach(v=>{const o=document.createElement('option');o.value=v;userEl.appendChild(o)})}
+    let fileHandle=null;
+    async function writeFile(){if(!fileHandle)throw new Error('no-file');const writable=await fileHandle.createWritable();await writable.write(toCSV(assets));await writable.close()}
+    async function readFile(){if(!fileHandle)throw new Error('no-file');const f=await fileHandle.getFile();const txt=await f.text();assets=fromCSV(txt)}
+    const DB_NAME='asset-manager-db', STORE='handles', KEY_DEFAULT='default-csv';
+    function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};r.onerror=()=>rej(r.error);r.onsuccess=()=>res(r.result)})}
+    async function idbGet(key){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const st=tx.objectStore(STORE);const req=st.get(key);req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)})}
+    async function idbSet(key,val){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');const st=tx.objectStore(STORE);const req=st.put(val,key);req.onsuccess=()=>res();req.onerror=()=>rej(req.error)})}
+    async function bindFile(){ try{const [h]=await window.showOpenFilePicker({types:[{description:'CSV',accept:{'text/csv':['.csv']}}],multiple:false}); fileHandle=h; els.file.status.textContent='已绑定：'+(fileHandle.name||csvName); await idbSet(KEY_DEFAULT,fileHandle); await readFile(); render(); }catch(e){/* ignore */} }
+    async function restoreHandle(){ try{const h=await idbGet(KEY_DEFAULT); if(h){const perm=await h.queryPermission? await h.queryPermission({mode:'readwrite'}):'granted'; if(perm==='granted'){fileHandle=h; els.file.status.textContent='已自动绑定：'+(fileHandle.name||csvName); await readFile(); return true } } }catch(e){/* ignore */} return false }
+    async function tryFetchAnyCSV(){
+      for(const name of defaultNames){
+        try{
+          const resp=await fetch(name,{cache:'no-store'});
+          if(resp.ok){
+            const txt=await resp.text();
+            assets=fromCSV(txt);
+            csvName=name;
+            els.file.status.textContent='已自动读取默认文件：'+name;
+            return true;
+          }
+        }catch(e){/* ignore */}
+      }
+      return false;
+    }
+    async function ensureDefaultCreated(){ try{const h=await window.showSaveFilePicker({suggestedName:csvName,types:[{description:'CSV',accept:{'text/csv':['.csv']}}]}); fileHandle=h; await writeFile(); els.file.status.textContent='已创建并绑定：'+(fileHandle.name||csvName); await idbSet(KEY_DEFAULT,fileHandle); return true }catch(e){ els.file.status.textContent='未绑定（只读）'; return false }
+    }
+    function exportExcel(){const rows=filtered();const th=['序号','资产名称','类别','厂家','型号','采购日期','采购金额','使用地点','使用人','状态','创建时间'];const head='<tr>'+th.map(h=>`<th>${h}</th>`).join('')+'</tr>';const body=rows.map((a,i)=>`<tr><td>${i+1}</td><td>${a.name||''}</td><td>${a.category||''}</td><td>${a.vendor||''}</td><td>${a.model||''}</td><td>${a.date||''}</td><td>${formatAmount(a.amount)}</td><td>${a.location||''}</td><td>${a.user||''}</td><td>${a.status||''}</td><td>${formatDateTime(a.created_at)}</td></tr>`).join('');const html=`<html><head><meta charset="utf-8"></head><body><table border="1">${head}${body}</table></body></html>`;const blob=new Blob([html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='资产清单.xls';a.click();URL.revokeObjectURL(a.href)}
+    function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+    const supabase=createClient('https://ctjmxkjucaugsdsoblbt.supabase.co','sb_publishable_EHN3n0hMGgnps_0nWc8tDg_lDZKmpRl');
+    function mapFromDB(r){return {id:r.id,name:r.name,category:r.category,vendor:r.manufacturer||'',model:r.model||'',date:r.purchase_date||'',amount:r.price,location:r.location||'',user:r.user||'',status:r.status||'',created_at:r.created_at}}
+    function mapToDB(a){return {id:typeof a.id==='number'?a.id:Number(a.id),name:a.name,category:a.category,manufacturer:a.vendor||null,model:a.model||null,purchase_date:a.date||null,price:a.amount!==''?Number(a.amount):null,location:a.location||null,user:a.user||null,status:a.status||null,created_at:a.created_at||null}}
+    function setLoading(b,textOk='已连接云端'){const el=document.getElementById('loading');if(el)el.classList.toggle('show',b);if(!b)els.file.status.textContent=textOk;else els.file.status.textContent='云端连接中…'}
+    async function dbLoad(){
+      try{
+        setLoading(true);
+        const { data, error }=await supabase.from('assets').select('*');
+        setLoading(false);
+        if(error){els.file.status.textContent='云端不可用（仅本地）';return false}
+        assets=(Array.isArray(data)?data:[]).map(mapFromDB);
+        els.file.status.textContent='已连接云端';
+        return true;
+      }catch(e){
+        setLoading(false,'云端不可用（仅本地）');
+        return false;
+      }
+    }
+    async function add(asset){
+      setLoading(true);
+      const dbRow=mapToDB(asset);
+      const { data, error }=await supabase.from('assets').insert(dbRow).select('*');
+      setLoading(false);
+      if(error){alert('云端写入失败：'+(error.message||'未知错误'));return}
+      if(data&&data.length){assets.unshift(mapFromDB(data[0]));render();}else{await dbLoad();render();}
+    }
+    async function update(id,data){
+      setLoading(true);
+      const dbRow=mapToDB({...data,id});
+      const { error }=await supabase.from('assets').update(dbRow).eq('id',id);
+      setLoading(false);
+      if(error){alert('云端更新失败：'+(error.message||'未知错误'));return}
+      await dbLoad();render();
+    }
+    async function remove(id){
+      setLoading(true);
+      const { error }=await supabase.from('assets').delete().eq('id',id);
+      setLoading(false);
+      if(error){alert('云端删除失败：'+(error.message||'未知错误'));return}
+      await dbLoad();render();
+    }
+    function parseDate(s){return s?new Date(s):null}
+    function inRange(d,from,to){if(!d)return false;const t=d.getTime();if(from&&t<from.getTime())return false;if(to&&t>to.getTime())return false;return true}
+    function filtered(){
+      const cat=els.filters.category.value;
+      const from=parseDate(els.filters.start.value);
+      const to=parseDate(els.filters.end.value);
+      const rows=assets.filter(a=>{
+        const okCat=!cat||a.category===cat;
+        const okDate=inRange(parseDate(a.date),from,to);
+        return okCat&&okDate
+      });
+      rows.sort((a,b)=>{
+        const da=parseDate(a.date)?.getTime()||0;
+        const db=parseDate(b.date)?.getTime()||0;
+        return db-da;
+      });
+      return rows;
+    }
+    function formatAmount(n){const x=Number(n||0);return x.toFixed(2)}
+    function formatDateTime(s){if(!s)return '';const d=new Date(s);if(Number.isNaN(d.getTime()))return s;const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`}
+    function render(){const rows=filtered();els.listBody.innerHTML='';rows.forEach((a,idx)=>{const tr=document.createElement('tr');const ops=document.createElement('td');ops.className='ops';ops.innerHTML='<button class="btn secondary" data-op="edit">编辑</button><button class="btn danger" data-op="del">删除</button>';tr.innerHTML=`<td>${idx+1}</td><td>${a.name||''}</td><td>${a.category||''}</td><td>${a.vendor||''}</td><td>${a.model||''}</td><td>${a.date||''}</td><td>${formatAmount(a.amount)}</td><td>${a.location||''}</td><td>${a.user||''}</td><td>${a.status||''}</td><td>${formatDateTime(a.created_at)}</td>`;tr.appendChild(ops);els.listBody.appendChild(tr);ops.querySelector('[data-op="edit"]').onclick=()=>openEdit(a);ops.querySelector('[data-op="del"]').onclick=()=>{const ok=window.confirm('确认删除该资产记录？');if(ok){remove(a.id);}}});els.emptyHint.style.display=rows.length? 'none':'block';const totalCount=rows.length;const totalAmount=rows.reduce((s,a)=>s+Number(a.amount||0),0);els.statCount.textContent=String(totalCount);els.statAmount.textContent=formatAmount(totalAmount);refreshSuggestions()}
+    function resetCreate(){els.f.name.value='';els.f.category.value='';els.f.vendor.value='';els.f.model.value='';els.f.date.value='';els.f.amount.value='';els.f.location.value='';els.f.user.value=''}
+    function openEdit(a){els.modal.id.value=a.id;els.modal.name.value=a.name||'';els.modal.category.value=a.category||'电子设备';els.modal.vendor.value=a.vendor||'';els.modal.model.value=a.model||'';els.modal.date.value=a.date||'';els.modal.amount.value=a.amount||'';els.modal.location.value=a.location||'';els.modal.user.value=a.user||'';els.modal.wrap.classList.add('show')}
+    function closeEdit(){els.modal.wrap.classList.remove('show')}
+    document.getElementById('createForm').addEventListener('submit',async e=>{e.preventDefault();const name=els.f.name.value.trim();const category=els.f.category.value;const vendor=els.f.vendor.value.trim();const model=els.f.model.value.trim();const date=els.f.date.value;const amount=els.f.amount.value;const location=els.f.location.value.trim();const user=els.f.user.value.trim();if(!name||!category||!date||amount==='')return;const status=(location&&user)? '使用中':'在库';const created_at=new Date().toISOString();const id=Date.now();const asset={id,name,category,vendor,model,date,amount,location,user,status,created_at};await add(asset);resetCreate();render()})
+    els.filters.category.addEventListener('change',render)
+    els.filters.start.addEventListener('change',render)
+    els.filters.end.addEventListener('change',render)
+    els.filters.reset.addEventListener('click',()=>{els.filters.category.value='';els.filters.start.value='';els.filters.end.value='';render()})
+    els.modal.close.addEventListener('click',closeEdit)
+    els.modal.cancel.addEventListener('click',closeEdit)
+    els.modal.save.addEventListener('click',async ()=>{const id=Number(els.modal.id.value);const name=els.modal.name.value.trim();const category=els.modal.category.value;const vendor=els.modal.vendor.value.trim();const model=els.modal.model.value.trim();const date=els.modal.date.value;const amount=els.modal.amount.value;const location=els.modal.location.value.trim();const user=els.modal.user.value.trim();if(!name||!category||!date||amount==='')return;const status=(location&&user)? '使用中':'在库';const data={name,category,vendor,model,date,amount,location,user,status};await update(id,data);closeEdit();render()})
+    function attachDatalistFull(el){let prev='';el.addEventListener('focus',()=>{prev=el.value;el.value='';el.dispatchEvent(new Event('input'))});el.addEventListener('blur',()=>{if(!el.value)el.value=prev})}
+    attachDatalistFull(els.modal.location)
+    attachDatalistFull(els.modal.user)
+    if(els.file.bindBtn && typeof els.file.bindBtn.addEventListener==='function'){els.file.bindBtn.addEventListener('click',bindFile)}
+    const __exportBtn=els.file.exportBtn;
+    if(__exportBtn && typeof __exportBtn.addEventListener==='function'){__exportBtn.addEventListener('click',exportExcel)} else {console.warn('导出按钮未找到或不可用')}
+    (async ()=>{const ok=await dbLoad();if(!ok){const okRestore=await restoreHandle();if(!okRestore){const okFetch=await tryFetchAnyCSV();if(!okFetch){els.file.status.textContent='未找到默认文件，请点击“绑定数据文件”'}}}render()})()
+  </script>
+</body>
+</html>
